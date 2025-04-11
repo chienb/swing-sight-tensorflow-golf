@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { GolfClub, Activity, TrendingUp } from 'lucide-react';
+import { Activity, TrendingUp } from 'lucide-react';
 
 const Dashboard = () => {
   return (
@@ -9,7 +9,7 @@ const Dashboard = () => {
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium flex items-center">
-            <GolfClub className="h-4 w-4 mr-2 text-golf-green-dark" />
+            <Activity className="h-4 w-4 mr-2 text-golf-green-dark" />
             Swings Recorded
           </CardTitle>
           <CardDescription>This week</CardDescription>

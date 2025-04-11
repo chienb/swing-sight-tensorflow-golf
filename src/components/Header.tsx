@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Golf, Menu, User } from 'lucide-react';
+import { Activity, Menu, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const Header = () => {
@@ -8,7 +8,7 @@ const Header = () => {
     <header className="bg-golf-green-dark text-white p-4 shadow-md">
       <div className="container mx-auto flex justify-between items-center">
         <div className="flex items-center gap-2">
-          <Golf className="h-6 w-6" />
+          <Activity className="h-6 w-6" />
           <h1 className="text-xl font-bold">SwingSight</h1>
         </div>
         <div className="flex items-center gap-2">
