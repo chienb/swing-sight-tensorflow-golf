@@ -45,7 +45,7 @@ const CameraView: React.FC<CameraViewProps> = ({ onVideoRecorded, onSourceChange
       
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        videoRef.current.play();
+        await videoRef.current.play();
         onSourceChange(videoRef.current);
       }
     } catch (error) {
@@ -156,11 +156,14 @@ const CameraView: React.FC<CameraViewProps> = ({ onVideoRecorded, onSourceChange
       startCamera();
     } else if (activeTab === 'review' && recordedVideo) {
       stopCamera();
-      // Make sure to properly set up the recorded video for analysis
+      
+      // Set up recorded video and pass it to pose detection
       if (recordedVideoRef.current) {
         recordedVideoRef.current.src = recordedVideo;
-        // Ensure the video is loaded before passing to analysis
+        
+        // Ensure the video is ready before passing to analysis
         recordedVideoRef.current.onloadeddata = () => {
+          console.log("Recorded video loaded and ready for analysis");
           onSourceChange(recordedVideoRef.current!);
         };
       }
@@ -255,6 +258,12 @@ const CameraView: React.FC<CameraViewProps> = ({ onVideoRecorded, onSourceChange
               controls
               playsInline
               src={recordedVideo || undefined}
+              onLoadedMetadata={() => {
+                console.log("Video metadata loaded in review mode");
+                if (recordedVideoRef.current) {
+                  onSourceChange(recordedVideoRef.current);
+                }
+              }}
             />
           </div>
           

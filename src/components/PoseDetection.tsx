@@ -1,3 +1,4 @@
+
 import React, { useRef, useEffect, useState } from 'react';
 import * as tf from '@tensorflow/tfjs';
 import * as poseDetection from '@tensorflow-models/pose-detection';
@@ -25,6 +26,7 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ videoSource }) => {
   // Last detected pose for debouncing
   const lastPoseRef = useRef<poseDetection.Pose | null>(null);
   const frameCountRef = useRef(0);
+  const videoTypeRef = useRef<'live' | 'recorded'>('live');
 
   useEffect(() => {
     const loadModel = async () => {
@@ -80,14 +82,26 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ videoSource }) => {
     }
   }, [isPlaying, videoSource]);
 
-  // Restart analysis when video source changes
+  // Detect video type (live or recorded)
   useEffect(() => {
-    if (videoSource && isAnalyzing) {
-      // Reset to ensure we start fresh analysis with new source
+    if (!videoSource) return;
+    
+    // Determine if it's a live feed or recorded video
+    videoTypeRef.current = videoSource.srcObject ? 'live' : 'recorded';
+    console.log("Video type:", videoTypeRef.current);
+    
+    // Reset analysis state when video source changes
+    if (isAnalyzing) {
       if (requestRef.current) {
         cancelAnimationFrame(requestRef.current);
         requestRef.current = null;
       }
+      
+      // Reset to ensure we start fresh analysis with new source
+      frameCountRef.current = 0;
+      setSwingPhase('setup');
+      
+      // Start detection again with new video source
       detectPose();
     }
   }, [videoSource]);
@@ -135,41 +149,59 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ videoSource }) => {
   
   const detectPose = async () => {
     if (!detector || !videoSource || !canvasRef.current) {
+      requestRef.current = requestAnimationFrame(detectPose);
       return;
     }
     
-    // Only run if the video is ready
+    // Make sure video is ready for processing
     if (videoSource.readyState < 2) {
+      console.log("Video not ready yet, waiting...");
       requestRef.current = requestAnimationFrame(detectPose);
       return;
     }
     
     try {
-      // Run pose detection
-      const poses = await detector.estimatePoses(videoSource);
+      // Create a video element specifically for pose detection
+      // This is a workaround for the texture import error
+      const canvas = document.createElement('canvas');
+      canvas.width = videoSource.videoWidth;
+      canvas.height = videoSource.videoHeight;
+      const ctx = canvas.getContext('2d');
       
-      // Draw pose
-      const ctx = canvasRef.current.getContext('2d');
       if (ctx) {
-        // Clear the canvas
-        ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+        // Draw the current frame from the video to the canvas
+        ctx.drawImage(videoSource, 0, 0, canvas.width, canvas.height);
         
-        // Set canvas dimensions to match video
-        canvasRef.current.width = videoSource.videoWidth;
-        canvasRef.current.height = videoSource.videoHeight;
+        // Run pose detection on the canvas instead of directly on the video
+        const poses = await detector.estimatePoses(canvas);
         
-        if (poses.length > 0) {
-          drawPose(poses[0], ctx);
+        // Draw pose on our display canvas
+        const displayCtx = canvasRef.current.getContext('2d');
+        if (displayCtx) {
+          // Clear the canvas
+          displayCtx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
           
-          // Store last pose for smoother analysis
-          lastPoseRef.current = poses[0];
+          // Set canvas dimensions to match video
+          canvasRef.current.width = videoSource.videoWidth;
+          canvasRef.current.height = videoSource.videoHeight;
           
-          // Use frame count to create smoother phase transitions
-          frameCountRef.current++;
+          // Draw the video frame first
+          displayCtx.drawImage(videoSource, 0, 0, canvasRef.current.width, canvasRef.current.height);
           
-          // Analyze swing after every few frames to avoid too frequent updates
-          if (frameCountRef.current % 10 === 0) {
-            analyzeSwing(poses[0]);
+          if (poses.length > 0) {
+            // Draw detected pose
+            drawPose(poses[0], displayCtx);
+            
+            // Store last pose for smoother analysis
+            lastPoseRef.current = poses[0];
+            
+            // Use frame count to create smoother phase transitions
+            frameCountRef.current++;
+            
+            // Analyze swing after every few frames to avoid too frequent updates
+            if (frameCountRef.current % 5 === 0) {
+              analyzeSwing(poses[0]);
+            }
           }
         }
       }
@@ -177,14 +209,8 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ videoSource }) => {
       console.error('Error in pose detection:', error);
     }
     
-    // Continue the animation loop if video is not paused/ended
-    if (!videoSource.paused && !videoSource.ended) {
-      requestRef.current = requestAnimationFrame(detectPose);
-    } else {
-      // For Review tab: even if video is paused, we need to keep analyzing
-      // This allows users to analyze specific frames while paused
-      requestRef.current = requestAnimationFrame(detectPose);
-    }
+    // Continue the animation loop
+    requestRef.current = requestAnimationFrame(detectPose);
   };
   
   const drawPose = (pose: poseDetection.Pose, ctx: CanvasRenderingContext2D) => {
@@ -240,60 +266,79 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ videoSource }) => {
   const analyzeSwing = (pose: poseDetection.Pose) => {
     if (!pose.keypoints || !videoSource) return;
     
-    // Real swing analysis based on pose data instead of just time
-    // This is a simplistic implementation - in a real app, you'd have more sophisticated analysis
     const rightShoulder = pose.keypoints.find(kp => kp.name === 'right_shoulder');
     const leftShoulder = pose.keypoints.find(kp => kp.name === 'left_shoulder');
     const rightElbow = pose.keypoints.find(kp => kp.name === 'right_elbow');
     const rightWrist = pose.keypoints.find(kp => kp.name === 'right_wrist');
     const rightHip = pose.keypoints.find(kp => kp.name === 'right_hip');
     
-    if (!rightShoulder || !leftShoulder || !rightElbow || !rightWrist || !rightHip) {
+    if (!rightShoulder?.score || !leftShoulder?.score || 
+        !rightElbow?.score || !rightWrist?.score || !rightHip?.score ||
+        rightShoulder.score < 0.3 || leftShoulder.score < 0.3 || 
+        rightElbow.score < 0.3 || rightWrist.score < 0.3 || rightHip.score < 0.3) {
+      // Not enough confidence in the key points, don't update the phase
       return;
     }
     
     // Calculate arm extension and body rotation
     const armExtension = calculateDistance(rightElbow, rightWrist) / calculateDistance(rightShoulder, rightElbow);
     const shoulderRotation = calculateDistance(rightShoulder, leftShoulder);
+    const wristHeight = rightWrist.y;
+    const shoulderHeight = rightShoulder.y;
     
-    // Determine swing phase based on pose characteristics and video progress
-    let phase = swingPhase;
+    // Enhanced logic for swing phase detection
+    let newPhase = swingPhase;
     
-    // Use video progress as an additional factor for recorded videos
-    const videoProgress = videoSource.currentTime / (videoSource.duration || 1);
-    
-    // For live camera, use only pose detection
-    // For recorded video, combine pose detection with video progress
-    if (videoSource.srcObject) {
-      // Live camera mode
-      if (armExtension < 1.2 && shoulderRotation > 0.8) {
-        phase = 'setup';
-      } else if (armExtension >= 1.2 && shoulderRotation > 0.9) {
-        phase = 'backswing';
-      } else if (armExtension < 1.2 && shoulderRotation < 0.7) {
-        phase = 'downswing';
-      } else if (armExtension >= 1.3 && shoulderRotation < 0.6) {
-        phase = 'impact';
+    // For recorded video, use video progress to influence phase detection
+    if (videoTypeRef.current === 'recorded') {
+      const videoProgress = videoSource.currentTime / (videoSource.duration || 1);
+      
+      // Combine video progress with pose data for better phase detection
+      if (videoProgress < 0.2) {
+        newPhase = 'setup';
+      } else if (videoProgress < 0.4 && wristHeight < shoulderHeight) {
+        newPhase = 'backswing';
+      } else if (videoProgress < 0.6) {
+        newPhase = 'downswing';
+      } else if (videoProgress < 0.8) {
+        newPhase = 'impact';
       } else {
-        phase = 'follow-through';
+        newPhase = 'follow-through';
       }
     } else {
-      // Recorded video mode - use video progress to help determine phases
-      if (videoProgress < 0.2) {
-        phase = 'setup';
-      } else if (videoProgress < 0.4) {
-        phase = 'backswing';
-      } else if (videoProgress < 0.6) {
-        phase = 'downswing';
-      } else if (videoProgress < 0.8) {
-        phase = 'impact';
-      } else {
-        phase = 'follow-through';
+      // For live camera, use more detailed pose analysis
+      // These thresholds might need adjustment based on testing
+      if (armExtension < 1.2 && wristHeight > shoulderHeight) {
+        newPhase = 'setup';
+      } else if (armExtension >= 1.2 && wristHeight < shoulderHeight) {
+        newPhase = 'backswing';
+      } else if (armExtension < 1.2 && wristHeight > shoulderHeight * 0.9) {
+        newPhase = 'downswing';
+      } else if (armExtension >= 1.2 && Math.abs(wristHeight - shoulderHeight) < 20) {
+        newPhase = 'impact';
+      } else if (armExtension >= 1.1 && wristHeight < shoulderHeight * 1.2) {
+        newPhase = 'follow-through';
+      }
+      
+      // Additional logic for sequential progression through phases
+      const currentPhaseIndex = phases.indexOf(swingPhase);
+      const newPhaseIndex = phases.indexOf(newPhase);
+      
+      // Only allow moving to the next phase or staying in the current phase
+      // This prevents jumping back to earlier phases during a swing
+      if (newPhaseIndex < currentPhaseIndex && frameCountRef.current > 30) {
+        // If we've been analyzing for a while and want to go back, 
+        // it's likely a new swing starting, so allow it
+        newPhase = newPhase;
+      } else if (newPhaseIndex > currentPhaseIndex + 1) {
+        // Don't skip phases, only advance one at a time
+        newPhase = phases[currentPhaseIndex + 1];
       }
     }
     
-    if (phase !== swingPhase) {
-      setSwingPhase(phase);
+    if (newPhase !== swingPhase) {
+      console.log(`Swing phase changed: ${swingPhase} -> ${newPhase}`);
+      setSwingPhase(newPhase);
     }
   };
   
@@ -335,7 +380,7 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ videoSource }) => {
             variant="outline" 
             size="icon" 
             onClick={() => handleSeek('backward')}
-            disabled={!videoSource}
+            disabled={!videoSource || videoTypeRef.current === 'live'}
           >
             <SkipBack className="h-4 w-4" />
           </Button>
@@ -344,7 +389,7 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ videoSource }) => {
             variant="outline" 
             size="icon" 
             onClick={togglePlayPause}
-            disabled={!videoSource}
+            disabled={!videoSource || videoTypeRef.current === 'live'}
           >
             {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
           </Button>
@@ -353,7 +398,7 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ videoSource }) => {
             variant="outline" 
             size="icon" 
             onClick={() => handleSeek('forward')}
-            disabled={!videoSource}
+            disabled={!videoSource || videoTypeRef.current === 'live'}
           >
             <SkipForward className="h-4 w-4" />
           </Button>
