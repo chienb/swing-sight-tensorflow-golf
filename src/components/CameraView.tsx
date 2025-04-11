@@ -154,21 +154,27 @@ const CameraView: React.FC<CameraViewProps> = ({ onVideoRecorded, onSourceChange
   useEffect(() => {
     if (activeTab === 'camera') {
       startCamera();
-    } else {
+    } else if (activeTab === 'review' && recordedVideo) {
       stopCamera();
-      if (recordedVideoRef.current && recordedVideo) {
+      // Make sure to properly set up the recorded video for analysis
+      if (recordedVideoRef.current) {
         recordedVideoRef.current.src = recordedVideo;
-        onSourceChange(recordedVideoRef.current);
+        // Ensure the video is loaded before passing to analysis
+        recordedVideoRef.current.onloadeddata = () => {
+          onSourceChange(recordedVideoRef.current!);
+        };
       }
     }
 
     return () => {
-      stopCamera();
+      if (activeTab === 'camera') {
+        stopCamera();
+      }
       if (timerRef.current) {
         clearInterval(timerRef.current);
       }
     };
-  }, [activeTab]);
+  }, [activeTab, recordedVideo]);
 
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden">
@@ -186,7 +192,7 @@ const CameraView: React.FC<CameraViewProps> = ({ onVideoRecorded, onSourceChange
               <span className="absolute top-1 right-1 h-2 w-2 bg-red-500 rounded-full animate-pulse"></span>
             )}
           </TabsTrigger>
-          <TabsTrigger value="review">
+          <TabsTrigger value="review" disabled={!recordedVideo}>
             <Video className="h-4 w-4 mr-2" />
             Review
           </TabsTrigger>

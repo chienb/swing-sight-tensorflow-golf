@@ -1,4 +1,3 @@
-
 import React, { useRef, useEffect, useState } from 'react';
 import * as tf from '@tensorflow/tfjs';
 import * as poseDetection from '@tensorflow-models/pose-detection';
@@ -22,6 +21,10 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ videoSource }) => {
   // Swing phases
   const [swingPhase, setSwingPhase] = useState('setup');
   const phases = ['setup', 'backswing', 'downswing', 'impact', 'follow-through'];
+  
+  // Last detected pose for debouncing
+  const lastPoseRef = useRef<poseDetection.Pose | null>(null);
+  const frameCountRef = useRef(0);
 
   useEffect(() => {
     const loadModel = async () => {
@@ -77,6 +80,18 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ videoSource }) => {
     }
   }, [isPlaying, videoSource]);
 
+  // Restart analysis when video source changes
+  useEffect(() => {
+    if (videoSource && isAnalyzing) {
+      // Reset to ensure we start fresh analysis with new source
+      if (requestRef.current) {
+        cancelAnimationFrame(requestRef.current);
+        requestRef.current = null;
+      }
+      detectPose();
+    }
+  }, [videoSource]);
+
   const togglePlayPause = () => {
     if (!videoSource) return;
     setIsPlaying(!isPlaying);
@@ -111,6 +126,9 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ videoSource }) => {
       setIsAnalyzing(false);
     } else {
       setIsAnalyzing(true);
+      // Reset frame count and swing phase when starting analysis
+      frameCountRef.current = 0;
+      setSwingPhase('setup');
       detectPose();
     }
   };
@@ -120,8 +138,8 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ videoSource }) => {
       return;
     }
     
-    // Only run if the video is ready and playing
-    if (videoSource.readyState < 2 || videoSource.paused || videoSource.ended) {
+    // Only run if the video is ready
+    if (videoSource.readyState < 2) {
       requestRef.current = requestAnimationFrame(detectPose);
       return;
     }
@@ -142,14 +160,31 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ videoSource }) => {
         
         if (poses.length > 0) {
           drawPose(poses[0], ctx);
-          analyzeSwing(poses[0]);
+          
+          // Store last pose for smoother analysis
+          lastPoseRef.current = poses[0];
+          
+          // Use frame count to create smoother phase transitions
+          frameCountRef.current++;
+          
+          // Analyze swing after every few frames to avoid too frequent updates
+          if (frameCountRef.current % 10 === 0) {
+            analyzeSwing(poses[0]);
+          }
         }
       }
     } catch (error) {
       console.error('Error in pose detection:', error);
     }
     
-    requestRef.current = requestAnimationFrame(detectPose);
+    // Continue the animation loop if video is not paused/ended
+    if (!videoSource.paused && !videoSource.ended) {
+      requestRef.current = requestAnimationFrame(detectPose);
+    } else {
+      // For Review tab: even if video is paused, we need to keep analyzing
+      // This allows users to analyze specific frames while paused
+      requestRef.current = requestAnimationFrame(detectPose);
+    }
   };
   
   const drawPose = (pose: poseDetection.Pose, ctx: CanvasRenderingContext2D) => {
@@ -221,19 +256,40 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ videoSource }) => {
     const armExtension = calculateDistance(rightElbow, rightWrist) / calculateDistance(rightShoulder, rightElbow);
     const shoulderRotation = calculateDistance(rightShoulder, leftShoulder);
     
-    // Determine swing phase based on pose characteristics
+    // Determine swing phase based on pose characteristics and video progress
     let phase = swingPhase;
     
-    if (armExtension < 1.2 && shoulderRotation > 0.8) {
-      phase = 'setup';
-    } else if (armExtension >= 1.2 && shoulderRotation > 0.9) {
-      phase = 'backswing';
-    } else if (armExtension < 1.2 && shoulderRotation < 0.7) {
-      phase = 'downswing';
-    } else if (armExtension >= 1.3 && shoulderRotation < 0.6) {
-      phase = 'impact';
+    // Use video progress as an additional factor for recorded videos
+    const videoProgress = videoSource.currentTime / (videoSource.duration || 1);
+    
+    // For live camera, use only pose detection
+    // For recorded video, combine pose detection with video progress
+    if (videoSource.srcObject) {
+      // Live camera mode
+      if (armExtension < 1.2 && shoulderRotation > 0.8) {
+        phase = 'setup';
+      } else if (armExtension >= 1.2 && shoulderRotation > 0.9) {
+        phase = 'backswing';
+      } else if (armExtension < 1.2 && shoulderRotation < 0.7) {
+        phase = 'downswing';
+      } else if (armExtension >= 1.3 && shoulderRotation < 0.6) {
+        phase = 'impact';
+      } else {
+        phase = 'follow-through';
+      }
     } else {
-      phase = 'follow-through';
+      // Recorded video mode - use video progress to help determine phases
+      if (videoProgress < 0.2) {
+        phase = 'setup';
+      } else if (videoProgress < 0.4) {
+        phase = 'backswing';
+      } else if (videoProgress < 0.6) {
+        phase = 'downswing';
+      } else if (videoProgress < 0.8) {
+        phase = 'impact';
+      } else {
+        phase = 'follow-through';
+      }
     }
     
     if (phase !== swingPhase) {
