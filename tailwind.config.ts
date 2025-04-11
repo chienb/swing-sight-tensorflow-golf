@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -61,6 +62,13 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				golf: {
+					'green-dark': '#2F7336',
+					'green-light': '#8FBC8F',
+					'sand': '#F5DEB3',
+					'sky': '#87CEEB',
+					'grass': '#7CCD7C'
 				}
 			},
 			borderRadius: {
@@ -84,11 +92,21 @@ export default {
 					to: {
 						height: '0'
 					}
+				},
+				'swing': {
+					'0%': { transform: 'rotate(0deg)' },
+					'30%': { transform: 'rotate(-60deg)' },
+					'80%': { transform: 'rotate(70deg)' },
+					'100%': { transform: 'rotate(0deg)' }
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				'swing': 'swing 1.5s ease-in-out'
+			},
+			fontFamily: {
+				sans: ['Inter', 'sans-serif'],
 			}
 		}
 	},
