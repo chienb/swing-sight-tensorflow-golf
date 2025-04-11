@@ -5,7 +5,7 @@ import Footer from '@/components/Footer';
 import CameraView from '@/components/CameraView';
 import PoseDetection from '@/components/PoseDetection';
 import Dashboard from '@/components/Dashboard';
-import { GolfClub } from 'lucide-react';
+import { Golf } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 
 const Index = () => {
@@ -39,7 +39,7 @@ const Index = () => {
         <Header />
         <main className="flex-grow flex items-center justify-center">
           <div className="text-center">
-            <GolfClub className="h-16 w-16 mx-auto mb-4 text-golf-green-dark animate-swing" />
+            <Golf className="h-16 w-16 mx-auto mb-4 text-golf-green-dark animate-swing" />
             <h2 className="text-2xl font-bold mb-2">SwingSight</h2>
             <p className="text-gray-500">Loading TensorFlow models...</p>
           </div>
