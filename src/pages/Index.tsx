@@ -14,13 +14,26 @@ const Index = () => {
   const [isLoading, setIsLoading] = useState(true);
   
   useEffect(() => {
-    // Simulate loading TensorFlow models
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 2000);
+    // Load TensorFlow.js dependencies
+    const loadDependencies = async () => {
+      try {
+        await Promise.all([
+          import('@tensorflow/tfjs'),
+          import('@tensorflow-models/pose-detection')
+        ]);
+        setIsLoading(false);
+      } catch (error) {
+        console.error('Error loading TensorFlow dependencies:', error);
+        toast({
+          title: "Loading Error",
+          description: "Failed to load TensorFlow models. Please refresh the page.",
+          variant: "destructive"
+        });
+      }
+    };
     
-    return () => clearTimeout(timer);
-  }, []);
+    loadDependencies();
+  }, [toast]);
   
   const handleVideoRecorded = (videoBlob: Blob) => {
     toast({
@@ -39,7 +52,7 @@ const Index = () => {
         <Header />
         <main className="flex-grow flex items-center justify-center">
           <div className="text-center">
-            <Activity className="h-16 w-16 mx-auto mb-4 text-golf-green-dark animate-swing" />
+            <Activity className="h-16 w-16 mx-auto mb-4 text-golf-green-dark animate-spin" />
             <h2 className="text-2xl font-bold mb-2">SwingSight</h2>
             <p className="text-gray-500">Loading TensorFlow models...</p>
           </div>

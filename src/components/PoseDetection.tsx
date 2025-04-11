@@ -17,6 +17,7 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ videoSource }) => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const requestRef = useRef<number | null>(null);
+  const [modelReady, setModelReady] = useState(false);
   
   // Swing phases
   const [swingPhase, setSwingPhase] = useState('setup');
@@ -38,6 +39,7 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ videoSource }) => {
         );
         
         setDetector(detector);
+        setModelReady(true);
         
         toast({
           title: "Model Loaded",
@@ -60,14 +62,16 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ videoSource }) => {
         cancelAnimationFrame(requestRef.current);
       }
     };
-  }, []);
+  }, [toast]);
 
   // Handle video play/pause
   useEffect(() => {
     if (!videoSource) return;
     
     if (isPlaying) {
-      videoSource.play();
+      videoSource.play().catch(error => {
+        console.error('Error playing video:', error);
+      });
     } else {
       videoSource.pause();
     }
@@ -79,7 +83,7 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ videoSource }) => {
   };
 
   const handleSeek = (direction: 'backward' | 'forward') => {
-    if (!videoSource) return;
+    if (!videoSource || isNaN(videoSource.duration)) return;
     
     const seekAmount = 0.5; // Half a second
     if (direction === 'backward') {
@@ -116,7 +120,8 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ videoSource }) => {
       return;
     }
     
-    if (videoSource.paused || videoSource.ended) {
+    // Only run if the video is ready and playing
+    if (videoSource.readyState < 2 || videoSource.paused || videoSource.ended) {
       requestRef.current = requestAnimationFrame(detectPose);
       return;
     }
@@ -128,6 +133,7 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ videoSource }) => {
       // Draw pose
       const ctx = canvasRef.current.getContext('2d');
       if (ctx) {
+        // Clear the canvas
         ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
         
         // Set canvas dimensions to match video
@@ -199,18 +205,32 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ videoSource }) => {
   const analyzeSwing = (pose: poseDetection.Pose) => {
     if (!pose.keypoints || !videoSource) return;
     
-    // Very simple swing phase detection based on video progress
-    // In a real app, you would analyze the actual pose
-    const progress = videoSource.currentTime / videoSource.duration;
+    // Real swing analysis based on pose data instead of just time
+    // This is a simplistic implementation - in a real app, you'd have more sophisticated analysis
+    const rightShoulder = pose.keypoints.find(kp => kp.name === 'right_shoulder');
+    const leftShoulder = pose.keypoints.find(kp => kp.name === 'left_shoulder');
+    const rightElbow = pose.keypoints.find(kp => kp.name === 'right_elbow');
+    const rightWrist = pose.keypoints.find(kp => kp.name === 'right_wrist');
+    const rightHip = pose.keypoints.find(kp => kp.name === 'right_hip');
     
-    let phase;
-    if (progress < 0.2) {
+    if (!rightShoulder || !leftShoulder || !rightElbow || !rightWrist || !rightHip) {
+      return;
+    }
+    
+    // Calculate arm extension and body rotation
+    const armExtension = calculateDistance(rightElbow, rightWrist) / calculateDistance(rightShoulder, rightElbow);
+    const shoulderRotation = calculateDistance(rightShoulder, leftShoulder);
+    
+    // Determine swing phase based on pose characteristics
+    let phase = swingPhase;
+    
+    if (armExtension < 1.2 && shoulderRotation > 0.8) {
       phase = 'setup';
-    } else if (progress < 0.4) {
+    } else if (armExtension >= 1.2 && shoulderRotation > 0.9) {
       phase = 'backswing';
-    } else if (progress < 0.5) {
+    } else if (armExtension < 1.2 && shoulderRotation < 0.7) {
       phase = 'downswing';
-    } else if (progress < 0.6) {
+    } else if (armExtension >= 1.3 && shoulderRotation < 0.6) {
       phase = 'impact';
     } else {
       phase = 'follow-through';
@@ -219,6 +239,10 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ videoSource }) => {
     if (phase !== swingPhase) {
       setSwingPhase(phase);
     }
+  };
+  
+  const calculateDistance = (point1: poseDetection.Keypoint, point2: poseDetection.Keypoint) => {
+    return Math.sqrt(Math.pow(point2.x - point1.x, 2) + Math.pow(point2.y - point1.y, 2));
   };
 
   return (
@@ -245,20 +269,36 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ videoSource }) => {
           onClick={toggleAnalysis}
           variant={isAnalyzing ? "destructive" : "default"}
           className="w-full mb-4"
+          disabled={!modelReady || !videoSource}
         >
           {isAnalyzing ? "Stop Analysis" : "Start Analysis"}
         </Button>
         
         <div className="flex justify-between">
-          <Button variant="outline" size="icon" onClick={() => handleSeek('backward')}>
+          <Button 
+            variant="outline" 
+            size="icon" 
+            onClick={() => handleSeek('backward')}
+            disabled={!videoSource}
+          >
             <SkipBack className="h-4 w-4" />
           </Button>
           
-          <Button variant="outline" size="icon" onClick={togglePlayPause}>
+          <Button 
+            variant="outline" 
+            size="icon" 
+            onClick={togglePlayPause}
+            disabled={!videoSource}
+          >
             {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
           </Button>
           
-          <Button variant="outline" size="icon" onClick={() => handleSeek('forward')}>
+          <Button 
+            variant="outline" 
+            size="icon" 
+            onClick={() => handleSeek('forward')}
+            disabled={!videoSource}
+          >
             <SkipForward className="h-4 w-4" />
           </Button>
         </div>
@@ -307,7 +347,7 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ videoSource }) => {
       
       <canvas
         ref={canvasRef}
-        className="pose-canvas"
+        className="w-full aspect-video mt-4 bg-black/5 rounded"
       />
     </div>
   );
