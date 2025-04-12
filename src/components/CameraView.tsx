@@ -31,7 +31,7 @@ const CameraView: React.FC<CameraViewProps> = ({ onVideoRecorded, onSourceChange
 
   // New states for camera toggle options
   const [useFrontCamera, setUseFrontCamera] = useState(false);
-  const [isLandscape, setIsLandscape] = useState(false);
+  const [isLandscape, setIsLandscape] = useState(!isMobile); // Default to landscape on desktop
 
   const startCamera = async () => {
     try {
@@ -201,6 +201,11 @@ const CameraView: React.FC<CameraViewProps> = ({ onVideoRecorded, onSourceChange
     }
   }, [useFrontCamera, isLandscape]);
 
+  // Set initial landscape state based on device
+  useEffect(() => {
+    setIsLandscape(!isMobile);
+  }, [isMobile]);
+
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden">
       <Tabs 
@@ -242,8 +247,8 @@ const CameraView: React.FC<CameraViewProps> = ({ onVideoRecorded, onSourceChange
             )}
           </div>
           
-          {isMobile && (
-            <div className="p-2 bg-gray-100 flex justify-center space-x-8">
+          <div className="p-2 bg-gray-100 flex justify-center space-x-8">
+            {isMobile && (
               <div className="flex items-center space-x-2">
                 <FlipHorizontal className="h-4 w-4 text-gray-600" />
                 <Switch 
@@ -253,18 +258,18 @@ const CameraView: React.FC<CameraViewProps> = ({ onVideoRecorded, onSourceChange
                 />
                 <span className="text-xs text-gray-600">{useFrontCamera ? 'Front' : 'Back'}</span>
               </div>
-              
-              <div className="flex items-center space-x-2">
-                <Smartphone className="h-4 w-4 text-gray-600" />
-                <Switch 
-                  checked={isLandscape} 
-                  onCheckedChange={toggleOrientation} 
-                  id="orientation-toggle"
-                />
-                <span className="text-xs text-gray-600">{isLandscape ? 'Landscape' : 'Portrait'}</span>
-              </div>
+            )}
+            
+            <div className="flex items-center space-x-2">
+              <Smartphone className="h-4 w-4 text-gray-600" />
+              <Switch 
+                checked={isLandscape} 
+                onCheckedChange={toggleOrientation} 
+                id="orientation-toggle"
+              />
+              <span className="text-xs text-gray-600">{isLandscape ? 'Landscape' : 'Portrait'}</span>
             </div>
-          )}
+          </div>
           
           <div className="p-4 flex justify-between items-center">
             <Button 

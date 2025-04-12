@@ -1,14 +1,17 @@
 
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import CameraView from '@/components/CameraView';
 import PoseDetection from '@/components/PoseDetection';
 import Dashboard from '@/components/Dashboard';
-import { Activity } from 'lucide-react';
+import { Activity, Home, Trophy, User } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
+import { Button } from '@/components/ui/button';
 
 const Index = () => {
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [videoSource, setVideoSource] = useState<HTMLVideoElement | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -68,6 +71,33 @@ const Index = () => {
       
       <main className="flex-grow container py-6 px-4">
         <h1 className="text-2xl font-bold mb-6">Golf Swing Analyzer</h1>
+        
+        <div className="mb-6 flex flex-wrap gap-2 justify-center">
+          <Button
+            onClick={() => navigate('/home')}
+            variant="outline"
+            className="flex items-center"
+          >
+            <Home className="mr-2 h-4 w-4" />
+            Dashboard
+          </Button>
+          <Button
+            onClick={() => navigate('/challenges')}
+            variant="outline"
+            className="flex items-center"
+          >
+            <Trophy className="mr-2 h-4 w-4" />
+            Challenges
+          </Button>
+          <Button
+            onClick={() => navigate('/profile')}
+            variant="outline"
+            className="flex items-center"
+          >
+            <User className="mr-2 h-4 w-4" />
+            Profile
+          </Button>
+        </div>
         
         <Dashboard />
         
