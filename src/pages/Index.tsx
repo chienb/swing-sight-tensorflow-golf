@@ -6,15 +6,19 @@ import Footer from '@/components/Footer';
 import CameraView from '@/components/CameraView';
 import PoseDetection from '@/components/PoseDetection';
 import Dashboard from '@/components/Dashboard';
+import SwingAnalysisPage from '@/components/swing/SwingAnalysisPage';
 import { Activity, Home, Trophy, User } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
+import AppLayout from '@/components/layout/AppLayout';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const Index = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [videoSource, setVideoSource] = useState<HTMLVideoElement | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const isMobile = useIsMobile();
   
   useEffect(() => {
     // Load TensorFlow.js dependencies
@@ -60,6 +64,39 @@ const Index = () => {
             <p className="text-gray-500">Loading TensorFlow models...</p>
           </div>
         </main>
+        {isMobile && (
+          <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-10">
+            <div className="flex justify-around items-center h-16">
+              <button
+                className="flex flex-col items-center justify-center w-20 h-full text-gray-500"
+                onClick={() => navigate('/home')}
+              >
+                <Home className="h-5 w-5 mb-1" />
+                <span className="text-xs">Home</span>
+              </button>
+              <button
+                className="flex flex-col items-center justify-center w-20 h-full text-gray-500"
+                onClick={() => navigate('/challenges')}
+              >
+                <Trophy className="h-5 w-5 mb-1" />
+                <span className="text-xs">Challenges</span>
+              </button>
+              <button
+                className="flex flex-col items-center justify-center w-20 h-full text-golf-green-dark"
+              >
+                <Activity className="h-5 w-5 mb-1" />
+                <span className="text-xs">Analysis</span>
+              </button>
+              <button
+                className="flex flex-col items-center justify-center w-20 h-full text-gray-500"
+                onClick={() => navigate('/profile')}
+              >
+                <User className="h-5 w-5 mb-1" />
+                <span className="text-xs">Profile</span>
+              </button>
+            </div>
+          </nav>
+        )}
         <Footer />
       </div>
     );
@@ -69,51 +106,43 @@ const Index = () => {
     <div className="min-h-screen flex flex-col bg-gray-50">
       <Header />
       
-      <main className="flex-grow container py-6 px-4">
-        <h1 className="text-2xl font-bold mb-6">Golf Swing Analyzer</h1>
-        
-        <div className="mb-6 flex flex-wrap gap-2 justify-center">
-          <Button
-            onClick={() => navigate('/home')}
-            variant="outline"
-            className="flex items-center"
-          >
-            <Home className="mr-2 h-4 w-4" />
-            Dashboard
-          </Button>
-          <Button
-            onClick={() => navigate('/challenges')}
-            variant="outline"
-            className="flex items-center"
-          >
-            <Trophy className="mr-2 h-4 w-4" />
-            Challenges
-          </Button>
-          <Button
-            onClick={() => navigate('/profile')}
-            variant="outline"
-            className="flex items-center"
-          >
-            <User className="mr-2 h-4 w-4" />
-            Profile
-          </Button>
-        </div>
-        
-        <Dashboard />
-        
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="space-y-6">
-            <CameraView 
-              onVideoRecorded={handleVideoRecorded} 
-              onSourceChange={handleSourceChange}
-            />
-          </div>
-          
-          <div>
-            <PoseDetection videoSource={videoSource} />
-          </div>
-        </div>
+      <main className="flex-grow container py-6 px-4 pb-20">
+        <SwingAnalysisPage />
       </main>
+      
+      {isMobile && (
+        <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-10">
+          <div className="flex justify-around items-center h-16">
+            <button
+              className="flex flex-col items-center justify-center w-20 h-full text-gray-500"
+              onClick={() => navigate('/home')}
+            >
+              <Home className="h-5 w-5 mb-1" />
+              <span className="text-xs">Home</span>
+            </button>
+            <button
+              className="flex flex-col items-center justify-center w-20 h-full text-gray-500"
+              onClick={() => navigate('/challenges')}
+            >
+              <Trophy className="h-5 w-5 mb-1" />
+              <span className="text-xs">Challenges</span>
+            </button>
+            <button
+              className="flex flex-col items-center justify-center w-20 h-full text-golf-green-dark"
+            >
+              <Activity className="h-5 w-5 mb-1" />
+              <span className="text-xs">Analysis</span>
+            </button>
+            <button
+              className="flex flex-col items-center justify-center w-20 h-full text-gray-500"
+              onClick={() => navigate('/profile')}
+            >
+              <User className="h-5 w-5 mb-1" />
+              <span className="text-xs">Profile</span>
+            </button>
+          </div>
+        </nav>
+      )}
       
       <Footer />
     </div>
