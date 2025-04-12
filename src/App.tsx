@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -11,6 +10,7 @@ import HomePage from "./components/home/HomePage";
 import ChallengesPage from "./components/challenges/ChallengesPage";
 import ProfilePage from "./components/profile/ProfilePage";
 import SettingsPage from "./components/settings/SettingsPage";
+import SwingAnalysisPage from "./components/swing/SwingAnalysisPage";
 
 const queryClient = new QueryClient();
 
@@ -21,11 +21,12 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Index />} />
+          <Route path="/" element={<Navigate to="/home" replace />} />
           
           <Route path="/" element={<AppLayout />}>
             <Route path="home" element={<HomePage />} />
             <Route path="challenges" element={<ChallengesPage />} />
+            <Route path="analysis" element={<SwingAnalysisPage />} />
             <Route path="profile" element={<ProfilePage />} />
             <Route path="settings" element={<SettingsPage />} />
           </Route>

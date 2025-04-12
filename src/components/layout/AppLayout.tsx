@@ -1,9 +1,8 @@
-
 import React from 'react';
 import { Outlet } from 'react-router-dom';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { Activity, HomeIcon, Trophy, User, Settings } from 'lucide-react';
+import { Activity, HomeIcon, Trophy, User, Settings, BarChart2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -16,7 +15,7 @@ const AppLayout: React.FC = () => {
   const navItems = [
     { icon: HomeIcon, label: 'Home', path: '/home' },
     { icon: Trophy, label: 'Challenges', path: '/challenges' },
-    { icon: Activity, label: 'Swing Analysis', path: '/' },
+    { icon: BarChart2, label: 'Analysis', path: '/analysis' },
     { icon: User, label: 'Profile', path: '/profile' }
   ];
   
