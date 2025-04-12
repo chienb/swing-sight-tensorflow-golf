@@ -1,10 +1,12 @@
 
 import React, { useRef, useState, useEffect } from 'react';
-import { Camera, Video, RefreshCw, Pause, Play } from 'lucide-react';
+import { Camera, Video, RefreshCw, Pause, Play, FlipHorizontal, Smartphone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/use-toast';
 import { cn } from '@/lib/utils';
+import { Switch } from '@/components/ui/switch';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface CameraViewProps {
   onVideoRecorded: (videoBlob: Blob) => void;
@@ -13,6 +15,7 @@ interface CameraViewProps {
 
 const CameraView: React.FC<CameraViewProps> = ({ onVideoRecorded, onSourceChange }) => {
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   const videoRef = useRef<HTMLVideoElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -26,6 +29,10 @@ const CameraView: React.FC<CameraViewProps> = ({ onVideoRecorded, onSourceChange
   const recordedVideoRef = useRef<HTMLVideoElement>(null);
   const timerRef = useRef<number | null>(null);
 
+  // New states for camera toggle options
+  const [useFrontCamera, setUseFrontCamera] = useState(false);
+  const [isLandscape, setIsLandscape] = useState(false);
+
   const startCamera = async () => {
     try {
       if (streamRef.current) {
@@ -34,9 +41,9 @@ const CameraView: React.FC<CameraViewProps> = ({ onVideoRecorded, onSourceChange
       
       const constraints = { 
         video: { 
-          facingMode: 'environment',
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
+          facingMode: useFrontCamera ? 'user' : 'environment',
+          width: { ideal: isLandscape ? 1280 : 720 },
+          height: { ideal: isLandscape ? 720 : 1280 }
         }
       };
       
@@ -114,6 +121,14 @@ const CameraView: React.FC<CameraViewProps> = ({ onVideoRecorded, onSourceChange
     }, 1000);
   };
 
+  const toggleCameraFacing = () => {
+    setUseFrontCamera(prev => !prev);
+  };
+  
+  const toggleOrientation = () => {
+    setIsLandscape(prev => !prev);
+  };
+
   const stopRecording = () => {
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop();
@@ -179,6 +194,13 @@ const CameraView: React.FC<CameraViewProps> = ({ onVideoRecorded, onSourceChange
     };
   }, [activeTab, recordedVideo]);
 
+  // Restart camera when toggle options change
+  useEffect(() => {
+    if (activeTab === 'camera') {
+      startCamera();
+    }
+  }, [useFrontCamera, isLandscape]);
+
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden">
       <Tabs 
@@ -202,7 +224,10 @@ const CameraView: React.FC<CameraViewProps> = ({ onVideoRecorded, onSourceChange
         </TabsList>
         
         <TabsContent value="camera" className="m-0">
-          <div className="relative aspect-video bg-black">
+          <div className={cn(
+            "relative bg-black",
+            isLandscape ? "aspect-video" : "aspect-[9/16]"
+          )}>
             <video
               ref={videoRef}
               className="w-full h-full object-cover"
@@ -216,6 +241,30 @@ const CameraView: React.FC<CameraViewProps> = ({ onVideoRecorded, onSourceChange
               </div>
             )}
           </div>
+          
+          {isMobile && (
+            <div className="p-2 bg-gray-100 flex justify-center space-x-8">
+              <div className="flex items-center space-x-2">
+                <FlipHorizontal className="h-4 w-4 text-gray-600" />
+                <Switch 
+                  checked={useFrontCamera} 
+                  onCheckedChange={toggleCameraFacing} 
+                  id="camera-toggle"
+                />
+                <span className="text-xs text-gray-600">{useFrontCamera ? 'Front' : 'Back'}</span>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <Smartphone className="h-4 w-4 text-gray-600" />
+                <Switch 
+                  checked={isLandscape} 
+                  onCheckedChange={toggleOrientation} 
+                  id="orientation-toggle"
+                />
+                <span className="text-xs text-gray-600">{isLandscape ? 'Landscape' : 'Portrait'}</span>
+              </div>
+            </div>
+          )}
           
           <div className="p-4 flex justify-between items-center">
             <Button 
