@@ -3,20 +3,14 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import CameraView from '@/components/CameraView';
-import PoseDetection from '@/components/PoseDetection';
-import Dashboard from '@/components/Dashboard';
 import SwingAnalysisPage from '@/components/swing/SwingAnalysisPage';
 import { Activity, Home, Trophy, User } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
-import { Button } from '@/components/ui/button';
-import AppLayout from '@/components/layout/AppLayout';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 const Index = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [videoSource, setVideoSource] = useState<HTMLVideoElement | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const isMobile = useIsMobile();
   
@@ -41,17 +35,6 @@ const Index = () => {
     
     loadDependencies();
   }, [toast]);
-  
-  const handleVideoRecorded = (videoBlob: Blob) => {
-    toast({
-      title: "Swing Recorded",
-      description: "Your golf swing has been recorded successfully!",
-    });
-  };
-  
-  const handleSourceChange = (source: HTMLVideoElement) => {
-    setVideoSource(source);
-  };
   
   if (isLoading) {
     return (
@@ -106,7 +89,7 @@ const Index = () => {
     <div className="min-h-screen flex flex-col bg-gray-50">
       <Header />
       
-      <main className="flex-grow container py-6 px-4 pb-20">
+      <main className="flex-grow">
         <SwingAnalysisPage />
       </main>
       
