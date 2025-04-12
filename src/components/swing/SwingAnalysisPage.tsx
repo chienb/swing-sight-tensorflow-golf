@@ -63,25 +63,6 @@ const SwingAnalysisPage = () => {
     <div className="container py-6 px-4 pb-20 md:pb-6">
       <h1 className="text-2xl font-bold mb-6">Swing Analysis</h1>
       
-      {/* Phase indicators */}
-      <div className="mb-6 overflow-x-auto">
-        <div className="flex space-x-1 min-w-full md:min-w-0">
-          {phases.map((phase) => (
-            <div
-              key={phase}
-              className={cn(
-                "px-2 py-1 text-xs md:text-sm rounded-full whitespace-nowrap flex-shrink-0",
-                currentPhase === phase
-                  ? "bg-golf-green-dark text-white font-medium"
-                  : "bg-gray-100 text-gray-600"
-              )}
-            >
-              {formatPhase(phase)}
-            </div>
-          ))}
-        </div>
-      </div>
-      
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="space-y-6">
           {/* Camera View */}
@@ -89,40 +70,6 @@ const SwingAnalysisPage = () => {
             onVideoRecorded={handleVideoRecorded} 
             onSourceChange={handleSourceChange}
           />
-          
-          {/* Video Controls */}
-          <div className="flex justify-center space-x-2 md:space-x-4">
-            <Button
-              size={isMobile ? "sm" : "default"}
-              variant="outline"
-              onClick={() => handleSeek('backward')}
-              disabled={!videoSource}
-              className="rounded-full"
-            >
-              <SkipBack className="h-4 w-4 md:h-5 md:w-5" />
-            </Button>
-            <Button
-              size={isMobile ? "sm" : "default"}
-              onClick={togglePlayPause}
-              disabled={!videoSource}
-              className="rounded-full"
-            >
-              {isPlaying ? (
-                <Pause className="h-4 w-4 md:h-5 md:w-5" />
-              ) : (
-                <Play className="h-4 w-4 md:h-5 md:w-5" />
-              )}
-            </Button>
-            <Button
-              size={isMobile ? "sm" : "default"}
-              variant="outline"
-              onClick={() => handleSeek('forward')}
-              disabled={!videoSource}
-              className="rounded-full"
-            >
-              <SkipForward className="h-4 w-4 md:h-5 md:w-5" />
-            </Button>
-          </div>
         </div>
         
         <div className="space-y-6">
