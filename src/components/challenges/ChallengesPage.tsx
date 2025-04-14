@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -50,14 +49,16 @@ const mockCompletedChallenges = [
     title: 'Weekly Speed Challenge',
     description: 'Achieve highest swing speed over 3 swings',
     participants: 86,
-    rank: '3rd'
+    rank: '3rd',
+    hasPrecisionData: true
   },
   {
     id: 2,
     title: 'Precision Swing',
     description: 'Hit the most accurate shot at a target',
     participants: 52,
-    rank: '1st'
+    rank: '1st',
+    hasPrecisionData: false
   }
 ];
 
@@ -128,6 +129,7 @@ const ChallengesPage: React.FC = () => {
               participants={challenge.participants}
               rank={challenge.rank}
               isCompleted={true}
+              hasPrecisionData={challenge.hasPrecisionData}
             />
           ))}
         </TabsContent>

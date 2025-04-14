@@ -1,8 +1,7 @@
-
 import React from 'react';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Users } from 'lucide-react';
+import { Users, CheckCircle } from 'lucide-react';
 
 interface ChallengeItemProps {
   title: string;
@@ -12,6 +11,7 @@ interface ChallengeItemProps {
   rank?: string;
   isActive?: boolean;
   isCompleted?: boolean;
+  hasPrecisionData?: boolean;
 }
 
 const ChallengeItem: React.FC<ChallengeItemProps> = ({
@@ -21,7 +21,8 @@ const ChallengeItem: React.FC<ChallengeItemProps> = ({
   progress,
   rank,
   isActive,
-  isCompleted
+  isCompleted,
+  hasPrecisionData
 }) => {
   return (
     <Card className="mb-4">
@@ -49,8 +50,17 @@ const ChallengeItem: React.FC<ChallengeItemProps> = ({
         )}
         
         {isCompleted && rank && (
-          <div className="text-sm font-medium">
-            Rank: <span className="text-golf-green-dark">{rank}</span>
+          <div className="flex items-center justify-between">
+            <div className="text-sm font-medium">
+              Rank: <span className="text-golf-green-dark">{rank}</span>
+            </div>
+            
+            {hasPrecisionData && (
+              <div className="flex items-center bg-blue-50 text-blue-700 px-2 py-1 rounded-full text-xs font-medium">
+                <CheckCircle className="h-3 w-3 mr-1" />
+                Precision Data
+              </div>
+            )}
           </div>
         )}
       </CardContent>

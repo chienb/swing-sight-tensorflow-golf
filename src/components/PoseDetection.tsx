@@ -1,10 +1,24 @@
-
 import React, { useRef, useEffect, useState } from 'react';
 import * as tf from '@tensorflow/tfjs';
 import * as poseDetection from '@tensorflow-models/pose-detection';
 import { Button } from '@/components/ui/button';
 import { Play, Pause, SkipBack, SkipForward } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
+import UpsellBanner from '@/components/ui/upsell-banner';
+import { useIsMobile } from '@/hooks/use-mobile';
+
+// Import SVG icons
+import setupWhite from '../../assets/white/setup.svg';
+import backswingWhite from '../../assets/white/backswing.svg';
+import downswingWhite from '../../assets/white/downswing.svg';
+import impactWhite from '../../assets/white/impact.svg';
+import followthroughWhite from '../../assets/white/followthrough.svg';
+
+import setupGreen from '../../assets/green/setup.svg';
+import backswingGreen from '../../assets/green/backswing.svg';
+import downswingGreen from '../../assets/green/downswing.svg';
+import impactGreen from '../../assets/green/impact.svg';
+import followthroughGreen from '../../assets/green/followthrough.svg';
 
 interface PoseDetectionProps {
   videoSource: HTMLVideoElement | null;
@@ -12,6 +26,7 @@ interface PoseDetectionProps {
 
 const PoseDetection: React.FC<PoseDetectionProps> = ({ videoSource }) => {
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [detector, setDetector] = useState<poseDetection.PoseDetector | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -27,6 +42,23 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ videoSource }) => {
   const lastPoseRef = useRef<poseDetection.Pose | null>(null);
   const frameCountRef = useRef(0);
   const videoTypeRef = useRef<'live' | 'recorded'>('live');
+  
+  // SVG icon mapping
+  const whiteIcons: Record<string, string> = {
+    'setup': setupWhite,
+    'backswing': backswingWhite,
+    'downswing': downswingWhite,
+    'impact': impactWhite,
+    'follow-through': followthroughWhite
+  };
+  
+  const greenIcons: Record<string, string> = {
+    'setup': setupGreen,
+    'backswing': backswingGreen,
+    'downswing': downswingGreen,
+    'impact': impactGreen,
+    'follow-through': followthroughGreen
+  };
 
   useEffect(() => {
     const loadModel = async () => {
@@ -272,10 +304,11 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ videoSource }) => {
     const rightWrist = pose.keypoints.find(kp => kp.name === 'right_wrist');
     const rightHip = pose.keypoints.find(kp => kp.name === 'right_hip');
     
+    // Lower the confidence threshold from 0.3 to 0.2
     if (!rightShoulder?.score || !leftShoulder?.score || 
         !rightElbow?.score || !rightWrist?.score || !rightHip?.score ||
-        rightShoulder.score < 0.3 || leftShoulder.score < 0.3 || 
-        rightElbow.score < 0.3 || rightWrist.score < 0.3 || rightHip.score < 0.3) {
+        rightShoulder.score < 0.2 || leftShoulder.score < 0.2 || 
+        rightElbow.score < 0.2 || rightWrist.score < 0.2 || rightHip.score < 0.2) {
       // Not enough confidence in the key points, don't update the phase
       return;
     }
@@ -296,7 +329,7 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ videoSource }) => {
       // Combine video progress with pose data for better phase detection
       if (videoProgress < 0.2) {
         newPhase = 'setup';
-      } else if (videoProgress < 0.4 && wristHeight < shoulderHeight) {
+      } else if (videoProgress < 0.4) {
         newPhase = 'backswing';
       } else if (videoProgress < 0.6) {
         newPhase = 'downswing';
@@ -306,33 +339,32 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ videoSource }) => {
         newPhase = 'follow-through';
       }
     } else {
-      // For live camera, use more detailed pose analysis
-      // These thresholds might need adjustment based on testing
-      if (armExtension < 1.2 && wristHeight > shoulderHeight) {
+      // For live camera, use more relaxed pose analysis
+      // Relaxed thresholds for better detection
+      if (armExtension < 1.3 && wristHeight > shoulderHeight * 0.9) {
         newPhase = 'setup';
-      } else if (armExtension >= 1.2 && wristHeight < shoulderHeight) {
+      } else if (armExtension >= 1.1 && wristHeight < shoulderHeight * 1.1) {
         newPhase = 'backswing';
-      } else if (armExtension < 1.2 && wristHeight > shoulderHeight * 0.9) {
+      } else if (armExtension < 1.3 && wristHeight > shoulderHeight * 0.8) {
         newPhase = 'downswing';
-      } else if (armExtension >= 1.2 && Math.abs(wristHeight - shoulderHeight) < 20) {
+      } else if (Math.abs(wristHeight - shoulderHeight) < 50) {
         newPhase = 'impact';
-      } else if (armExtension >= 1.1 && wristHeight < shoulderHeight * 1.2) {
+      } else if (wristHeight < shoulderHeight * 1.3) {
         newPhase = 'follow-through';
       }
       
-      // Additional logic for sequential progression through phases
+      // Relaxed sequential progression logic
       const currentPhaseIndex = phases.indexOf(swingPhase);
       const newPhaseIndex = phases.indexOf(newPhase);
       
-      // Only allow moving to the next phase or staying in the current phase
-      // This prevents jumping back to earlier phases during a swing
-      if (newPhaseIndex < currentPhaseIndex && frameCountRef.current > 30) {
-        // If we've been analyzing for a while and want to go back, 
+      // Allow more flexibility in phase transitions
+      if (newPhaseIndex < currentPhaseIndex && frameCountRef.current > 20) {
+        // If we've been analyzing for a shorter time and want to go back, 
         // it's likely a new swing starting, so allow it
         newPhase = newPhase;
-      } else if (newPhaseIndex > currentPhaseIndex + 1) {
-        // Don't skip phases, only advance one at a time
-        newPhase = phases[currentPhaseIndex + 1];
+      } else if (newPhaseIndex > currentPhaseIndex + 1 && frameCountRef.current > 10) {
+        // Allow skipping a phase if we've been in the current phase for a while
+        newPhase = newPhase;
       }
     }
     
@@ -351,19 +383,30 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ videoSource }) => {
       <div className="mb-4">
         <h3 className="font-bold text-lg mb-2">Swing Analysis</h3>
         
-        <div className="grid grid-cols-5 gap-1 mb-4">
-          {phases.map((phase) => (
-            <div 
-              key={phase}
-              className={`text-center p-2 text-xs rounded-md ${
-                phase === swingPhase 
-                  ? 'bg-golf-green-dark text-white' 
-                  : 'bg-gray-100'
-              }`}
-            >
-              {phase.charAt(0).toUpperCase() + phase.slice(1)}
-            </div>
-          ))}
+        <div className="flex space-x-2 mb-4">
+          {phases.map((phase) => {
+            const isActive = phase === swingPhase;
+            return (
+              <div 
+                key={phase}
+                className={`flex items-center justify-center rounded-md ${
+                  isActive 
+                    ? 'bg-[rgb(42,121,45)]' 
+                    : 'bg-[#efefef]'
+                }`}
+                style={{
+                  width: isMobile ? '32px' : '64px',
+                  height: isMobile ? '32px' : '64px'
+                }}
+              >
+                <img 
+                  src={isActive ? whiteIcons[phase] : greenIcons[phase]} 
+                  alt={phase} 
+                  className={isMobile ? 'h-6 w-6' : 'h-10 w-10'}
+                />
+              </div>
+            );
+          })}
         </div>
         
         <Button
@@ -406,6 +449,17 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ videoSource }) => {
       </div>
       
       <div className="text-sm">
+        <div className="flex justify-between mb-3 p-2 bg-gray-50 rounded">
+          <div>
+            <p className="font-semibold text-gray-700">Your score:</p>
+            <p className="text-2xl font-bold text-golf-green-dark">78</p>
+          </div>
+          <div>
+            <p className="font-semibold text-gray-700">Benchmark:</p>
+            <p className="text-2xl font-bold text-blue-600">72</p>
+          </div>
+        </div>
+        
         <h4 className="font-semibold mb-1">Tips for {swingPhase}:</h4>
         <ul className="list-disc pl-5 space-y-1">
           {swingPhase === 'setup' && (
@@ -445,6 +499,8 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ videoSource }) => {
           )}
         </ul>
       </div>
+      
+      <UpsellBanner className="mt-4 mb-4" />
       
       <canvas
         ref={canvasRef}
