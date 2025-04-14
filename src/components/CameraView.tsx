@@ -1,4 +1,3 @@
-
 import React, { useRef, useState, useEffect } from 'react';
 import { Camera, Video, RefreshCw, Pause, Play, FlipHorizontal, Smartphone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -80,21 +79,29 @@ const CameraView: React.FC<CameraViewProps> = ({ onVideoRecorded, onSourceChange
     if (!streamRef.current) return;
     
     recordedChunksRef.current = [];
-    const options = { mimeType: 'video/webm;codecs=vp9' };
+    const options = { mimeType: 'video/webm' }; // Removed specific codec to improve compatibility
     
     try {
       mediaRecorderRef.current = new MediaRecorder(streamRef.current, options);
     } catch (e) {
-      console.error('MediaRecorder error:', e);
+      console.error('MediaRecorder error with video/webm:', e);
       try {
-        mediaRecorderRef.current = new MediaRecorder(streamRef.current);
+        // Try with more widely supported format
+        const fallbackOptions = { mimeType: 'video/mp4' };
+        mediaRecorderRef.current = new MediaRecorder(streamRef.current, fallbackOptions);
       } catch (e) {
-        toast({
-          title: "Recording Error",
-          description: "Can't record video in this browser.",
-          variant: "destructive"
-        });
-        return;
+        console.error('MediaRecorder error with video/mp4:', e);
+        try {
+          // Last resort - let browser choose format
+          mediaRecorderRef.current = new MediaRecorder(streamRef.current);
+        } catch (e) {
+          toast({
+            title: "Recording Error",
+            description: "Can't record video in this browser.",
+            variant: "destructive"
+          });
+          return;
+        }
       }
     }
     
@@ -105,8 +112,13 @@ const CameraView: React.FC<CameraViewProps> = ({ onVideoRecorded, onSourceChange
     };
     
     mediaRecorderRef.current.onstop = () => {
-      const videoBlob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
+      // Get the mime type that was actually used
+      const mimeType = mediaRecorderRef.current?.mimeType || 'video/webm';
+      const videoBlob = new Blob(recordedChunksRef.current, { type: mimeType });
       const videoUrl = URL.createObjectURL(videoBlob);
+      
+      console.log(`Created video with mime type: ${mimeType}, size: ${videoBlob.size} bytes`);
+      
       setRecordedVideo(videoUrl);
       onVideoRecorded(videoBlob);
       setActiveTab('review');
@@ -311,7 +323,12 @@ const CameraView: React.FC<CameraViewProps> = ({ onVideoRecorded, onSourceChange
               className="w-full h-full object-contain"
               controls
               playsInline
+              autoPlay={false}
+              muted={false}
               src={recordedVideo || undefined}
+              onError={(e) => {
+                console.error("Video playback error:", e);
+              }}
               onLoadedMetadata={() => {
                 console.log("Video metadata loaded in review mode");
                 if (recordedVideoRef.current) {

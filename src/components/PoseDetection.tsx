@@ -38,6 +38,15 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ videoSource }) => {
   const [swingPhase, setSwingPhase] = useState('setup');
   const phases = ['setup', 'backswing', 'downswing', 'impact', 'follow-through'];
   
+  // Phase-specific scores and benchmarks
+  const phaseScores = {
+    'setup': { score: 82, benchmark: 90 },
+    'backswing': { score: 75, benchmark: 85 },
+    'downswing': { score: 68, benchmark: 80 },
+    'impact': { score: 79, benchmark: 85 },
+    'follow-through': { score: 85, benchmark: 88 }
+  };
+  
   // Last detected pose for debouncing
   const lastPoseRef = useRef<poseDetection.Pose | null>(null);
   const frameCountRef = useRef(0);
@@ -452,11 +461,11 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ videoSource }) => {
         <div className="flex justify-between mb-3 p-2 bg-gray-50 rounded">
           <div>
             <p className="font-semibold text-gray-700">Your score:</p>
-            <p className="text-2xl font-bold text-golf-green-dark">78</p>
+            <p className="text-2xl font-bold text-golf-green-dark">{phaseScores[swingPhase].score}</p>
           </div>
           <div>
             <p className="font-semibold text-gray-700">Benchmark:</p>
-            <p className="text-2xl font-bold text-blue-600">72</p>
+            <p className="text-2xl font-bold text-blue-600">{phaseScores[swingPhase].benchmark}</p>
           </div>
         </div>
         
